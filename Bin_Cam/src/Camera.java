@@ -21,7 +21,7 @@ public class Camera extends JPanel {
         return image;
     }
     private void setimage(BufferedImage newimage) {
-        image=newimage;
+        image = newimage;
         return;
     }
     /**
@@ -45,7 +45,7 @@ public class Camera extends JPanel {
             type = BufferedImage.TYPE_3BYTE_BGR;
             // bgr to rgb
             byte b;
-            for(int i=0; i<data.length; i=i+3) {
+            for(int i = 0; i < data.length; i = i + 3) {
                 b = data[i];
                 data[i] = data[i+2];
                 data[i+2] = b;
@@ -59,8 +59,8 @@ public class Camera extends JPanel {
         return image2;
     }
     public void paintComponent(Graphics g) {
-        BufferedImage temp=getimage();
-        if(temp!=null) {
+        BufferedImage temp = getimage();
+        if(temp != null) {
             g.drawImage(temp,10,10,temp.getWidth(),temp.getHeight(), this);
         }
     }
@@ -74,9 +74,9 @@ public class Camera extends JPanel {
         Camera panel = new Camera();
         frame.setContentPane(panel);
         frame.setVisible(true);
-        Mat webcam_image=new Mat();
+        Mat webcam_image = new Mat();
         BufferedImage temp;
-        VideoCapture capture =new VideoCapture(0);
+        VideoCapture capture = new VideoCapture(0);
 
         if( capture.isOpened()) {
             while( true ) {
@@ -84,7 +84,7 @@ public class Camera extends JPanel {
                 if( !webcam_image.empty() ) {
                     Imgproc.resize(webcam_image, webcam_image, new Size(webcam_image.size().width*0.3,webcam_image.size().height*0.3));
                     frame.setSize(webcam_image.width()+40,webcam_image.height()+60);
-                    temp=matToBufferedImage(webcam_image);
+                    temp = matToBufferedImage(webcam_image);
                     panel.setimage(temp);
                     panel.repaint();
                 } else {
