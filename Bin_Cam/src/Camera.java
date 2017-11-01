@@ -48,7 +48,7 @@ public class Camera extends JPanel {
             for(int i = 0; i < data.length; i = i + 3) {
                 b = data[i];
                 data[i] = data[i+2];
-                data[i+2] = b;
+                data[i + 2] = b;
             }
             break;
         default:
