@@ -1,5 +1,8 @@
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+import java.awt.image.ByteLookupTable;
+import java.awt.image.LookupOp;
+import java.awt.image.WritableRaster;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -13,9 +16,12 @@ import org.opencv.videoio.VideoCapture;
 public class Camera extends JPanel {
     private static final long serialVersionUID = 1L;
     private BufferedImage image;
+    private static LookupOp lookUpTable;
+
     // Create a constructor method
     public Camera() {
         super();
+        Camera.lookUpTable = this.getLookUpTable();
     }
     private BufferedImage getimage() {
         return image;
@@ -64,6 +70,45 @@ public class Camera extends JPanel {
             g.drawImage(temp,10,10,temp.getWidth(),temp.getHeight(), this);
         }
     }
+    
+    public static void toGrayScale(BufferedImage image) {
+
+        WritableRaster raster = image.getRaster();
+
+        int[] pixelBuffer = new int[raster.getNumDataElements()];
+
+        for (int y = 0; y < raster.getHeight(); y++) {
+            for (int x = 0; x < raster.getWidth(); x++) {
+                // ピクセルごとに処理
+
+                raster.getPixel(x, y, pixelBuffer);
+
+                // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
+                int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+                // RGBをすべてに同値を設定することでグレースケール化する
+                pixelBuffer[0] = pixelAvg;
+                pixelBuffer[1] = pixelAvg;
+                pixelBuffer[2] = pixelAvg;
+
+                raster.setPixel(x, y, pixelBuffer);
+            }
+        }
+    }
+
+    public LookupOp getLookUpTable() {
+
+        byte[] lookUpTable = new byte[256];
+
+        for (int i = 0; i < 256; i++) {
+            // 閾値により、白・黒どちらを返すか決定
+            if (i > 125) {
+                lookUpTable[i] = (byte) 255;
+            } else {
+                lookUpTable[i] = (byte) 0;
+            }
+        }
+        return new LookupOp(new ByteLookupTable(0, lookUpTable), null);
+    }
 
     public static void main(String arg[]) {
         // Load the native library.
@@ -82,9 +127,12 @@ public class Camera extends JPanel {
             while( true ) {
                 capture.read(webcam_image);
                 if( !webcam_image.empty() ) {
-                    Imgproc.resize(webcam_image, webcam_image, new Size(webcam_image.size().width*0.3,webcam_image.size().height*0.3));
+//                    Imgproc.threshold(webcam_image,webcam_image, 0, 255.0, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+                    Imgproc.resize(webcam_image, webcam_image, new Size(webcam_image.size().width,webcam_image.size().height));
                     frame.setSize(webcam_image.width()+40,webcam_image.height()+60);
                     temp = matToBufferedImage(webcam_image);
+                    toGrayScale(temp);
+                    temp = lookUpTable.filter(temp, null);
                     panel.setimage(temp);
                     panel.repaint();
                 } else {
