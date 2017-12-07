@@ -1,34 +1,38 @@
-import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.awt.image.ByteLookupTable;
-import java.awt.image.LookupOp;
 import java.awt.image.WritableRaster;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
-public class Camera extends JPanel {
-    private static final long serialVersionUID = 1L;
-    private BufferedImage image;
-    private static LookupOp lookUpTable;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Application;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.Group;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+//import javafx.scene.canvas.GraphicsContext;
+
+public class Camera extends Application{
+    private static int resultY;
+    private static int startY;
+    private static int endY;
+    private static int resultX;
+    Mat webcam_image;
+    BufferedImage temp;
+    VideoCapture capture;
+    Canvas canvas;
 
     // Create a constructor method
     public Camera() {
         super();
-        Camera.lookUpTable = this.getLookUpTable();
-    }
-    private BufferedImage getimage() {
-        return image;
-    }
-    private void setimage(BufferedImage newimage) {
-        image = newimage;
-        return;
     }
     /**
      * Converts/writes a Mat into a BufferedImage.
@@ -60,15 +64,9 @@ public class Camera extends JPanel {
         default:
             return null;
         }
-        BufferedImage image2 = new BufferedImage(cols, rows, type);
-        image2.getRaster().setDataElements(0, 0, cols, rows, data);
-        return image2;
-    }
-    public void paintComponent(Graphics g) {
-        BufferedImage temp = getimage();
-        if(temp != null) {
-            g.drawImage(temp,10,10,temp.getWidth(),temp.getHeight(), this);
-        }
+        BufferedImage image = new BufferedImage(cols, rows, type);
+        image.getRaster().setDataElements(0, 0, cols, rows, data);
+        return image;
     }
     
     public static void toGrayScale(BufferedImage image) {
@@ -77,69 +75,95 @@ public class Camera extends JPanel {
 
         int[] pixelBuffer = new int[raster.getNumDataElements()];
 
-        for (int y = 0; y < raster.getHeight(); y++) {
-            for (int x = 0; x < raster.getWidth(); x++) {
-                // ピクセルごとに処理
-
-                raster.getPixel(x, y, pixelBuffer);
-
-                // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
-                int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
-                // RGBをすべてに同値を設定することでグレースケール化する
-                pixelBuffer[0] = pixelAvg;
-                pixelBuffer[1] = pixelAvg;
-                pixelBuffer[2] = pixelAvg;
-
-                raster.setPixel(x, y, pixelBuffer);
-            }
-        }
-    }
-
-    public LookupOp getLookUpTable() {
-
-        byte[] lookUpTable = new byte[256];
-
-        for (int i = 0; i < 256; i++) {
-            // 閾値により、白・黒どちらを返すか決定
-            if (i > 125) {
-                lookUpTable[i] = (byte) 255;
-            } else {
-                lookUpTable[i] = (byte) 0;
-            }
-        }
-        return new LookupOp(new ByteLookupTable(0, lookUpTable), null);
+        resultX = 0;
+        resultY = 0;
+        startY = 0;
+        endY = 0; 
+        boolean CHECK_WHITE = false;
+      for (int y = 0; y < raster.getHeight(); y++) {
+    	  
+	      for (int x = 0; x < raster.getWidth(); x++) {
+	        raster.getPixel(x, y, pixelBuffer);
+	
+	        // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
+	        int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+	        // RGBをすべてに同値を設定することでグレースケール化する
+	        if(pixelAvg > 250){
+		        resultX=x;
+		        startY=y;
+		        for(int pixelAvg2 = pixelAvg;pixelAvg2 > 250;y++){
+		        	if(y >=raster.getHeight()){
+		        		break;
+		        	}
+		        	pixelAvg2 = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+		        	raster.getPixel(x, y, pixelBuffer);
+		        }
+			    endY=y;
+		        resultY = (startY + endY)/2;
+		        CHECK_WHITE = true;
+		        break;
+	        }
+	      }
+	        if(CHECK_WHITE){
+	        	break;
+	        }
+      }
+      if(CHECK_WHITE){
+    	  System.out.println("marker is "+resultX+","+resultY+".");
+      }
     }
 
     public static void main(String arg[]) {
+        launch( arg );
+        return;
+    }
+    @Override
+    public void start(Stage primaryStage) throws Exception
+    {
+        // シーングラフを作成
+        Group   root    = new Group();
+        // キャンバスを作成
+        canvas  = new Canvas( 640 , 480 );
+        root.getChildren().add( canvas );
+ 
         // Load the native library.
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-        JFrame frame = new JFrame("BasicPanel");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(400,400);
-        Camera panel = new Camera();
-        frame.setContentPane(panel);
-        frame.setVisible(true);
-        Mat webcam_image = new Mat();
-        BufferedImage temp;
-        VideoCapture capture = new VideoCapture(0);
-
+        webcam_image = new Mat();
+        capture = new VideoCapture(0);
+        // シーンを作成
+        Scene   scene   = new Scene( root );
+         
+        // ウィンドウ表示
+        primaryStage.setScene( scene );
+        primaryStage.show();
         if( capture.isOpened()) {
-            while( true ) {
-                capture.read(webcam_image);
-                if( !webcam_image.empty() ) {
-//                    Imgproc.threshold(webcam_image,webcam_image, 0, 255.0, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-                    Imgproc.resize(webcam_image, webcam_image, new Size(webcam_image.size().width,webcam_image.size().height));
-                    frame.setSize(webcam_image.width()+40,webcam_image.height()+60);
-                    temp = matToBufferedImage(webcam_image);
-                    toGrayScale(temp);
-                    temp = lookUpTable.filter(temp, null);
-                    panel.setimage(temp);
-                    panel.repaint();
-                } else {
-                    System.out.println(" --(!) No captured frame -- ");
-                }
-            }
+        	Timeline timer = new Timeline(new KeyFrame( Duration.millis(100),new EventHandler<ActionEvent>(){
+        		@Override
+        		public void handle(ActionEvent event){
+        			capture.read(webcam_image);
+            		if( !webcam_image.empty() ) {
+                        temp = matToBufferedImage(webcam_image);
+                        toGrayScale(temp);
+                        drawCanvas();
+                       ;
+                    } else {
+                        System.out.println(" --(!) No captured frame -- ");
+                    }
+        		}
+        	}));
+
+            timer.setCycleCount(Timeline.INDEFINITE);
+            timer.play();
         }
-        return;
+         
+    }
+    
+    private void drawCanvas() {
+// グラフィクス・コンテキストを取得し、        
+// キャンバスに描写
+	        GraphicsContext gc = canvas.getGraphicsContext2D();
+	        gc.setFill( Color.BROWN );
+	        gc.fillRect( resultX ,resultY  , 3 , 3 );
+		        
     }
 }
