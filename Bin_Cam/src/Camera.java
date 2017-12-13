@@ -1,13 +1,20 @@
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
+import java.io.ByteArrayInputStream;
+
+import javax.imageio.ImageIO;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.videoio.VideoCapture;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
@@ -29,6 +36,9 @@ public class Camera extends Application{
     BufferedImage temp;
     VideoCapture capture;
     Canvas canvas;
+    private boolean isShowPreview = false;
+    private boolean isShowDraw = true;
+	private DaemonThread myThread = null;
 
     // Create a constructor method
     public Camera() {
@@ -68,9 +78,8 @@ public class Camera extends Application{
         image.getRaster().setDataElements(0, 0, cols, rows, data);
         return image;
     }
-    
-    public static void toGrayScale(BufferedImage image) {
 
+    public static void toGrayScale(BufferedImage image) {
         WritableRaster raster = image.getRaster();
 
         int[] pixelBuffer = new int[raster.getNumDataElements()];
@@ -78,38 +87,38 @@ public class Camera extends Application{
         resultX = 0;
         resultY = 0;
         startY = 0;
-        endY = 0; 
+        endY = 0;
         boolean CHECK_WHITE = false;
       for (int y = 0; y < raster.getHeight(); y++) {
-    	  
-	      for (int x = 0; x < raster.getWidth(); x++) {
-	        raster.getPixel(x, y, pixelBuffer);
-	
-	        // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
-	        int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
-	        // RGBをすべてに同値を設定することでグレースケール化する
-	        if(pixelAvg > 250){
-		        resultX=x;
-		        startY=y;
-		        for(int pixelAvg2 = pixelAvg;pixelAvg2 > 250;y++){
-		        	if(y >=raster.getHeight()){
-		        		break;
-		        	}
-		        	pixelAvg2 = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
-		        	raster.getPixel(x, y, pixelBuffer);
-		        }
-			    endY=y;
-		        resultY = (startY + endY)/2;
-		        CHECK_WHITE = true;
-		        break;
-	        }
-	      }
-	        if(CHECK_WHITE){
-	        	break;
-	        }
+
+              for (int x = 0; x < raster.getWidth(); x++) {
+                raster.getPixel(x, y, pixelBuffer);
+
+                // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
+                int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+                // RGBをすべてに同値を設定することでグレースケール化する
+                if(pixelAvg > 250){
+                        resultX=x;
+                        startY=y;
+                        for(int pixelAvg2 = pixelAvg;pixelAvg2 > 250;y++){
+                                if(y >=raster.getHeight()){
+                                        break;
+                                }
+                                pixelAvg2 = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+                                raster.getPixel(x, y, pixelBuffer);
+                        }
+                            endY=y;
+                        resultY = (startY + endY)/2;
+                        CHECK_WHITE = true;
+                        break;
+                }
+              }
+                if(CHECK_WHITE){
+                        break;
+                }
       }
       if(CHECK_WHITE){
-    	  System.out.println("marker is "+resultX+","+resultY+".");
+              System.out.println("marker is "+resultX+","+resultY+".");
       }
     }
 
@@ -123,47 +132,117 @@ public class Camera extends Application{
         // シーングラフを作成
         Group   root    = new Group();
         // キャンバスを作成
-        canvas  = new Canvas( 640 , 480 );
+        canvas  = new Canvas(640, 480);
         root.getChildren().add( canvas );
- 
+
         // Load the native library.
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         webcam_image = new Mat();
         capture = new VideoCapture(0);
         // シーンを作成
         Scene   scene   = new Scene( root );
-         
+
         // ウィンドウ表示
         primaryStage.setScene( scene );
         primaryStage.show();
-        if( capture.isOpened()) {
-        	Timeline timer = new Timeline(new KeyFrame( Duration.millis(100),new EventHandler<ActionEvent>(){
-        		@Override
-        		public void handle(ActionEvent event){
-        			capture.read(webcam_image);
-            		if( !webcam_image.empty() ) {
-                        temp = matToBufferedImage(webcam_image);
-                        toGrayScale(temp);
-                        drawCanvas();
-                       ;
-                    } else {
-                        System.out.println(" --(!) No captured frame -- ");
-                    }
-        		}
-        	}));
 
-            timer.setCycleCount(Timeline.INDEFINITE);
-            timer.play();
+        if (true) {
+	        myThread = new DaemonThread(); //create object of threat class
+	        Thread t = new Thread(myThread);
+	        t.setDaemon(true);
+	        myThread.runnable = true;
+	        t.start();                 //start thrad
+        } else {
+	        if( capture.isOpened()) {
+	                Timeline timer = new Timeline(new KeyFrame( Duration.millis(30),new EventHandler<ActionEvent>(){
+	                        @Override
+	                        public void handle(ActionEvent event){
+	                                capture.read(webcam_image);
+	                            if( !webcam_image.empty() ) {
+	                        temp = matToBufferedImage(webcam_image);
+	//                        toGrayScale(temp);
+	                        drawCanvas(temp);
+	                       ;
+	                    } else {
+	                        System.out.println(" --(!) No captured frame -- ");
+	                    }
+	                        }
+	                }));
+
+	            timer.setCycleCount(Timeline.INDEFINITE);
+	            timer.play();
+	        }
         }
-         
     }
-    
-    private void drawCanvas() {
-// グラフィクス・コンテキストを取得し、        
-// キャンバスに描写
-	        GraphicsContext gc = canvas.getGraphicsContext2D();
+
+    private void drawCanvas(BufferedImage image) {
+    	drawCanvas(image, "0");
+    }
+
+    private void drawCanvas(BufferedImage image, String strFps) {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+    	if (isShowPreview) {
+    		gc.drawImage(SwingFXUtils.toFXImage(image,null), 0, 0);
+    	}
+
+    	if (isShowDraw) {
+	    	// グラフィクス・コンテキストを取得し、
+	    	// キャンバスに描写
 	        gc.setFill( Color.BROWN );
-	        gc.fillRect( resultX ,resultY  , 3 , 3 );
-		        
+	        gc.fillRect( resultX ,resultY  , 10 , 10 );
+	        gc.fillRect( 0 ,0  , 50 , 50 );
+    	}
+        gc.setStroke(Color.CYAN);
+        gc.strokeText(strFps, 20, 20);
+    }
+
+    class DaemonThread implements Runnable {
+        Mat frame = new Mat();
+    	double startTime,nowTime, diffTime;
+    	int fps = 0;
+    	int cnt = 0;
+    	int oldcnt = 0;
+        MatOfByte mem = new MatOfByte();
+    	final double f = (1000 /Core.getTickFrequency());
+
+        protected volatile boolean runnable = false;
+
+        @Override
+        public void run() {
+            synchronized (this) {
+            	startTime = Core.getTickCount();
+            	while (runnable) {
+                    if (capture.grab()) {
+                        try {
+                        	capture.retrieve(frame);
+
+                            nowTime = Core.getTickCount();
+                            diffTime = (int)((nowTime- startTime)*f);
+
+                            if (diffTime >= 1000) {
+                             startTime = nowTime;
+                             fps = cnt - oldcnt;
+                             oldcnt = cnt;
+                            }
+                            BufferedImage buff;
+                            if (true) {
+                            	buff = matToBufferedImage(frame);
+                            } else {
+                            	Imgcodecs.imencode(".bmp", frame, mem);
+	                            Image im = ImageIO.read(new ByteArrayInputStream(mem.toArray()));
+	                    		buff = (BufferedImage) im;
+                            }
+                    		toGrayScale(buff);
+                    		drawCanvas(buff, String.valueOf(fps));
+                            cnt++;
+	                    } catch (Exception ex) {
+	                        System.out.printf("Error %s", ex.toString());
+	                    }
+                    }
+            	}
+            }
+        }
     }
 }
+
+
