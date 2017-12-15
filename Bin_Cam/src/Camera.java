@@ -1,29 +1,19 @@
-import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.ByteArrayInputStream;
-
-import javax.imageio.ImageIO;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.videoio.VideoCapture;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 //import javafx.scene.canvas.GraphicsContext;
 
@@ -159,38 +149,38 @@ public class Camera extends Application{
         primaryStage.setScene( scene );
         primaryStage.show();
 
-        if (true) {
+//        if (true) {
 	        myThread = new DaemonThread(); //create object of threat class
 	        Thread t = new Thread(myThread);
 	        t.setDaemon(true);
 	        myThread.runnable = true;
 	        t.start();                 //start thrad
-        } else {
-	        if( capture.isOpened()) {
-	                Timeline timer = new Timeline(new KeyFrame( Duration.millis(30),new EventHandler<ActionEvent>(){
-	                        @Override
-	                        public void handle(ActionEvent event){
-	                                capture.read(webcam_image);
-	                            if( !webcam_image.empty() ) {
-	                        temp = matToBufferedImage(webcam_image);
-	//                        toGrayScale(temp);
-	                        drawCanvas(temp);
-	                       ;
-	                    } else {
-	                        System.out.println(" --(!) No captured frame -- ");
-	                    }
-	                        }
-	                }));
-
-	            timer.setCycleCount(Timeline.INDEFINITE);
-	            timer.play();
-	        }
-        }
+//        } else {
+//	        if( capture.isOpened()) {
+//	                Timeline timer = new Timeline(new KeyFrame( Duration.millis(30),new EventHandler<ActionEvent>(){
+//	                        @Override
+//	                        public void handle(ActionEvent event){
+//	                                capture.read(webcam_image);
+//	                            if( !webcam_image.empty() ) {
+//	                        temp = matToBufferedImage(webcam_image);
+//	//                        toGrayScale(temp);
+//	                        drawCanvas(temp);
+//	                       ;
+//	                    } else {
+//	                        System.out.println(" --(!) No captured frame -- ");
+//	                    }
+//	                        }
+//	                }));
+//
+//	            timer.setCycleCount(Timeline.INDEFINITE);
+//	            timer.play();
+//	        }
+//        }
     }
 
-    private void drawCanvas(BufferedImage image) {
-    	drawCanvas(image, "0");
-    }
+//    private void drawCanvas(BufferedImage image) {
+//    	drawCanvas(image, "0");
+//    }
 
     private void drawCanvas(BufferedImage image, String strFps) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -265,13 +255,13 @@ public class Camera extends Application{
                              oldcnt = cnt;
                             }
                             BufferedImage buff;
-                            if (true) {
+//                            if (true) {
                             	buff = matToBufferedImage(frame);
-                            } else {
-                            	Imgcodecs.imencode(".bmp", frame, mem);
-	                            Image im = ImageIO.read(new ByteArrayInputStream(mem.toArray()));
-	                    		buff = (BufferedImage) im;
-                            }
+//                            } else {
+//                            	Imgcodecs.imencode(".bmp", frame, mem);
+//	                            Image im = ImageIO.read(new ByteArrayInputStream(mem.toArray()));
+//	                    		buff = (BufferedImage) im;
+//                            }
                     		toGrayScale(buff);
                     		drawCanvas(buff, String.valueOf(fps));
                             cnt++;
