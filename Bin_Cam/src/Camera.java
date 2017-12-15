@@ -28,10 +28,12 @@ import javafx.util.Duration;
 //import javafx.scene.canvas.GraphicsContext;
 
 public class Camera extends Application{
-    private static int resultY;
     private static int startY;
     private static int endY;
-    private static int resultX;
+    private static int resultY =0;
+    private static int resultX =0;
+    private static int preY = 0;
+    private static int preX = 0;
     Mat webcam_image;
     BufferedImage temp;
     VideoCapture capture;
@@ -39,6 +41,8 @@ public class Camera extends Application{
     private boolean isShowPreview = false;
     private boolean isShowDraw = true;
 	private DaemonThread myThread = null;
+    static boolean CHECK_WHITE = false;
+    Color lineColor = Color.BLACK;
 
     // Create a constructor method
     public Camera() {
@@ -84,42 +88,51 @@ public class Camera extends Application{
 
         int[] pixelBuffer = new int[raster.getNumDataElements()];
 
-        resultX = 0;
-        resultY = 0;
         startY = 0;
         endY = 0;
-        boolean CHECK_WHITE = false;
-      for (int y = 0; y < raster.getHeight(); y++) {
+        CHECK_WHITE = false;
+        for (int y = 0; y < raster.getHeight(); y++) {
 
-              for (int x = 0; x < raster.getWidth(); x++) {
+            for (int x = 0; x < raster.getWidth(); x++) {
                 raster.getPixel(x, y, pixelBuffer);
 
                 // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
                 int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
                 // RGBをすべてに同値を設定することでグレースケール化する
                 if(pixelAvg > 250){
-                        resultX=x;
-                        startY=y;
-                        for(int pixelAvg2 = pixelAvg;pixelAvg2 > 250;y++){
-                                if(y >=raster.getHeight()){
-                                        break;
-                                }
-                                pixelAvg2 = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
-                                raster.getPixel(x, y, pixelBuffer);
+                	preX = resultX;
+                	preY = resultY;
+                    resultX=x;
+                    startY=y;
+                    for(int pixelAvg2 = pixelAvg;pixelAvg2 > 250;y++){
+                        if(y >=raster.getHeight()){
+                            break;
                         }
-                            endY=y;
-                        resultY = (startY + endY)/2;
-                        CHECK_WHITE = true;
-                        break;
+                        pixelAvg2 = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
+                        raster.getPixel(x, y, pixelBuffer);
+                    }
+                    endY=y;
+                    resultY = (startY + endY)/2;
+                    CHECK_WHITE = true;
+                    if(preX == 0 && preY == 0){
+                    	preX = resultX;
+                    	preY = resultY;
+                    }
+                    break;
                 }
-              }
-                if(CHECK_WHITE){
-                        break;
-                }
-      }
-      if(CHECK_WHITE){
-              System.out.println("marker is "+resultX+","+resultY+".");
-      }
+            }
+            if(CHECK_WHITE){
+                break;
+            }
+        }
+        if(CHECK_WHITE){
+            System.out.println("marker is "+resultX+","+resultY+".");
+        }else{
+    	    resultX = 0;
+    	    resultY = 0;
+        	preX = resultX;
+        	preY = resultY;
+        }
     }
 
     public static void main(String arg[]) {
@@ -184,16 +197,43 @@ public class Camera extends Application{
     	if (isShowPreview) {
     		gc.drawImage(SwingFXUtils.toFXImage(image,null), 0, 0);
     	}
-
     	if (isShowDraw) {
 	    	// グラフィクス・コンテキストを取得し、
 	    	// キャンバスに描写
-	        gc.setFill( Color.BROWN );
-	        gc.fillRect( resultX ,resultY  , 10 , 10 );
+    		if(resultX<50&&resultX!=0){
+    			if(resultY<50){
+    				  gc.clearRect(0, 0, 640, 480);
+    			}else if(resultY<100){
+    				lineColor = Color.BROWN;
+    			}else if(resultY<150){
+    				lineColor = Color.CYAN;
+    				
+    			}else if(resultY<200){
+    				lineColor = Color.RED;
+    				
+    			}else if(resultY<250){
+    				lineColor = Color.BLACK;
+    				
+    			}
+    		}
+    		gc.setLineWidth(5);
+    		gc.setStroke(lineColor);
+	        if(CHECK_WHITE){
+	        	gc.strokeLine( preX,preY,resultX ,resultY );
+	        }
+	        gc.setFill( Color.WHITE );
 	        gc.fillRect( 0 ,0  , 50 , 50 );
+	        gc.setFill( Color.BROWN );
+	        gc.fillRect( 0 ,50  , 50 , 50 );
+	        gc.setFill( Color.CYAN );
+	        gc.fillRect( 0 ,100  , 50 , 50 );
+	        gc.setFill( Color.RED);
+	        gc.fillRect( 0 ,150  , 50 , 50 );
+	        gc.setFill( Color.BLACK);
+	        gc.fillRect( 0 ,200  , 50 , 50 );
     	}
-        gc.setStroke(Color.CYAN);
-        gc.strokeText(strFps, 20, 20);
+		gc.setLineWidth(1);
+        gc.strokeText("clear", 20, 20);
     }
 
     class DaemonThread implements Runnable {
