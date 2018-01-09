@@ -2,9 +2,12 @@ import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio;
 
 import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
@@ -24,12 +27,23 @@ public class Camera extends Application{
     private static int resultX =0;
     private static int preY = 0;
     private static int preX = 0;
+    private static int setScreenSize = 0;
+    private static int setScreenX1 = 0;
+    private static int setScreenY1 = 0;
+    private static int setScreenX2 = 0;
+    private static int setScreenY2 = 0;
+    private static int setScreenX3 = 0;
+    private static int setScreenY3 = 0;
+    private static int setScreenX4 = 0;
+    private static int setScreenY4 = 0;
+
     Mat webcam_image;
     BufferedImage temp;
     VideoCapture capture;
     Canvas canvas;
-    private boolean isShowPreview = false;
+    private boolean isShowPreview = true;
     private boolean isShowDraw = true;
+    private static boolean isLightOn = false;
 	private DaemonThread myThread = null;
     static boolean CHECK_WHITE = false;
     Color lineColor = Color.BLACK;
@@ -39,7 +53,7 @@ public class Camera extends Application{
         super();
     }
     /**
-     * Converts/writes a Mat into a BufferedImage.
+     * Matの画像を１マスずつアクセスできるBufferedImageに変換する
      *
      * @param matrix Mat of type CV_8UC3 or CV_8UC1
      * @return BufferedImage of type TYPE_3BYTE_BGR or TYPE_BYTE_GRAY
@@ -73,11 +87,15 @@ public class Camera extends Application{
         return image;
     }
 
+    /*
+     * BufferedImageに１マスずつアクセスしているメソッド
+     *
+     *
+     */
     public static void toGrayScale(BufferedImage image) {
         WritableRaster raster = image.getRaster();
 
         int[] pixelBuffer = new int[raster.getNumDataElements()];
-
         startY = 0;
         endY = 0;
         CHECK_WHITE = false;
@@ -88,7 +106,7 @@ public class Camera extends Application{
 
                 // 単純平均法((R+G+B)/3)でグレースケール化したときの輝度取得
                 int pixelAvg = (pixelBuffer[0] + pixelBuffer[1] + pixelBuffer[2]) / 3;
-                // RGBをすべてに同値を設定することでグレースケール化する
+                // 輝度が250より大きい所を光源と判断しています
                 if(pixelAvg > 250){
                 	preX = resultX;
                 	preY = resultY;
@@ -117,11 +135,38 @@ public class Camera extends Application{
         }
         if(CHECK_WHITE){
             System.out.println("marker is "+resultX+","+resultY+".");
+            if(setScreenSize<4&&isLightOn==false){
+            	switch(setScreenSize){
+            	    case 0:
+            	    	setScreenX1 = resultX;
+            	    	setScreenY1 = resultY;
+            	    	break;
+            	    case 1:
+            	    	setScreenX2 = resultX;
+            	    	setScreenY2 = resultY;
+            	    	break;
+            	    case 2:
+            	    	setScreenX3 = resultX;
+            	    	setScreenY3 = resultY;
+            	    	break;
+            	    case 3:
+            	    	setScreenX4 = resultX;
+            	    	setScreenY4 = resultY;
+            	    	break;
+            	}
+                isLightOn=true;
+                //setScreenSize++;
+            }System.out.println("setScreenSize"+setScreenSize);
+//            System.out.println("setScreen1 is "+setScreenX1+","+setScreenY1+".");
+//            System.out.println("setScreen2 is "+setScreenX2+","+setScreenY2+".");
+//            System.out.println("setScreen3 is "+setScreenX3+","+setScreenY3+".");
+//            System.out.println("setScreen4 is "+setScreenX4+","+setScreenY4+".");
         }else{
     	    resultX = 0;
     	    resultY = 0;
         	preX = resultX;
         	preY = resultY;
+            isLightOn=false;
         }
     }
 
@@ -142,6 +187,9 @@ public class Camera extends Application{
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         webcam_image = new Mat();
         capture = new VideoCapture(0);
+        capture.set(Videoio.CAP_PROP_FPS, 30);
+        capture.set(Videoio.CAP_PROP_FRAME_WIDTH, 1280);
+        capture.set(Videoio.CAP_PROP_FRAME_HEIGHT, 720);
         // シーンを作成
         Scene   scene   = new Scene( root );
 
@@ -197,13 +245,13 @@ public class Camera extends Application{
     				lineColor = Color.BROWN;
     			}else if(resultY<150){
     				lineColor = Color.CYAN;
-    				
+
     			}else if(resultY<200){
     				lineColor = Color.RED;
-    				
+
     			}else if(resultY<250){
     				lineColor = Color.BLACK;
-    				
+
     			}
     		}
     		gc.setLineWidth(5);
@@ -223,7 +271,8 @@ public class Camera extends Application{
 	        gc.fillRect( 0 ,200  , 50 , 50 );
     	}
 		gc.setLineWidth(1);
-        gc.strokeText("clear", 20, 20);
+//        gc.strokeText("clear", 20, 20);
+		gc.strokeText(strFps, 20, 20);
     }
 
     class DaemonThread implements Runnable {
@@ -256,6 +305,26 @@ public class Camera extends Application{
                             }
                             BufferedImage buff;
 //                            if (true) {
+//                            getPerspective
+                            if(setScreenSize>3){
+                            	//変換元座標設定
+                            	float srcPoint[] = new float[]{
+                            			setScreenX1, setScreenY1,
+                            			setScreenX2, setScreenY2,
+                            			setScreenX3, setScreenY3,
+                            			setScreenX4, setScreenY4};
+                            	Mat srcPointMat = new Mat(4,2,CvType.CV_32F);
+                            	srcPointMat.put(0, 0,srcPoint );
+                            	//変換先座標設定
+                            	float dstPoint[] = new float[]{0, 0, 0, 640, 480, 640, 480, 0 };
+                            	Mat dstPointMat = new Mat(4,2,CvType.CV_32F);
+                            	dstPointMat.put(0, 0,dstPoint );
+                            	//変換行列作成
+                            	Mat r_mat = Imgproc.getPerspectiveTransform(srcPointMat, dstPointMat);
+                            	//図形変換処理
+//                            	Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
+                            	Imgproc.warpPerspective(frame, frame, r_mat, frame.size(),Imgproc.INTER_LINEAR);
+                            }
                             	buff = matToBufferedImage(frame);
 //                            } else {
 //                            	Imgcodecs.imencode(".bmp", frame, mem);
