@@ -1,14 +1,5 @@
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.PointerInfo;
-import java.awt.Robot;
-import java.awt.event.InputEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -19,16 +10,14 @@ import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
 
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
-import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+
 //import javafx.scene.canvas.GraphicsContext;
 
 public class Camera extends Application{
@@ -47,25 +36,17 @@ public class Camera extends Application{
     private static int setScreenY3 = 0;
     private static int setScreenX4 = 0;
     private static int setScreenY4 = 0;
-    private static int screenHeight = 480;
-    private static int screenWidth = 640;
-    private static int clkTime = 0;
-    
 
     Mat webcam_image;
     BufferedImage temp;
     VideoCapture capture;
     Canvas canvas;
-    private boolean isShowPreview = false;
+    private boolean isShowPreview = true;
     private boolean isShowDraw = true;
     private static boolean isLightOn = false;
 	private DaemonThread myThread = null;
     static boolean CHECK_WHITE = false;
     Color lineColor = Color.BLACK;
-    WritableImage wImage;
-    boolean isInit = true;
-    boolean mouceMode = false;
-    boolean isClick = false;
 
     // Create a constructor method
     public Camera() {
@@ -111,7 +92,7 @@ public class Camera extends Application{
      *
      *
      */
-    public static void indexCoordinate(BufferedImage image) {
+    public static void toGrayScale(BufferedImage image) {
         WritableRaster raster = image.getRaster();
 
         int[] pixelBuffer = new int[raster.getNumDataElements()];
@@ -173,10 +154,13 @@ public class Camera extends Application{
             	    	setScreenY4 = resultY;
             	    	break;
             	}
+                isLightOn=true;
                 //setScreenSize++;
-            }
-            isLightOn=true;
-            System.out.println("setScreenSize"+setScreenSize);
+            }System.out.println("setScreenSize"+setScreenSize);
+//            System.out.println("setScreen1 is "+setScreenX1+","+setScreenY1+".");
+//            System.out.println("setScreen2 is "+setScreenX2+","+setScreenY2+".");
+//            System.out.println("setScreen3 is "+setScreenX3+","+setScreenY3+".");
+//            System.out.println("setScreen4 is "+setScreenX4+","+setScreenY4+".");
         }else{
     	    resultX = 0;
     	    resultY = 0;
@@ -196,7 +180,7 @@ public class Camera extends Application{
         // シーングラフを作成
         Group   root    = new Group();
         // キャンバスを作成
-        canvas  = new Canvas(screenWidth , screenHeight);
+        canvas  = new Canvas(640, 480);
         root.getChildren().add( canvas );
 
         // Load the native library.
@@ -204,44 +188,50 @@ public class Camera extends Application{
         webcam_image = new Mat();
         capture = new VideoCapture(0);
         capture.set(Videoio.CAP_PROP_FPS, 30);
-        capture.set(Videoio.CAP_PROP_FRAME_WIDTH, screenWidth);
-        capture.set(Videoio.CAP_PROP_FRAME_HEIGHT, screenHeight);
+        capture.set(Videoio.CAP_PROP_FRAME_WIDTH, 1280);
+        capture.set(Videoio.CAP_PROP_FRAME_HEIGHT, 720);
         // シーンを作成
         Scene   scene   = new Scene( root );
 
         // ウィンドウ表示
         primaryStage.setScene( scene );
         primaryStage.show();
-        primaryStage.setOnCloseRequest(req -> {
-            mouceMode = false;
-        	Platform.exit();
-        });
 
-        myThread = new DaemonThread(); //create object of threat class
-        Thread t = new Thread(myThread);
-        t.setDaemon(true);
-        myThread.runnable = true;
-        t.start();                 //start thrad
+//        if (true) {
+	        myThread = new DaemonThread(); //create object of threat class
+	        Thread t = new Thread(myThread);
+	        t.setDaemon(true);
+	        myThread.runnable = true;
+	        t.start();                 //start thrad
+//        } else {
+//	        if( capture.isOpened()) {
+//	                Timeline timer = new Timeline(new KeyFrame( Duration.millis(30),new EventHandler<ActionEvent>(){
+//	                        @Override
+//	                        public void handle(ActionEvent event){
+//	                                capture.read(webcam_image);
+//	                            if( !webcam_image.empty() ) {
+//	                        temp = matToBufferedImage(webcam_image);
+//	//                        toGrayScale(temp);
+//	                        drawCanvas(temp);
+//	                       ;
+//	                    } else {
+//	                        System.out.println(" --(!) No captured frame -- ");
+//	                    }
+//	                        }
+//	                }));
+//
+//	            timer.setCycleCount(Timeline.INDEFINITE);
+//	            timer.play();
+//	        }
+//        }
     }
 
+//    private void drawCanvas(BufferedImage image) {
+//    	drawCanvas(image, "0");
+//    }
 
     private void drawCanvas(BufferedImage image, String strFps) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
-		if (isInit)
-        {
-			
-			try {
-				BufferedImage bi = ImageIO.read(new File(getClass().getResource("/test.png").getPath()));
-				Image img = SwingFXUtils.toFXImage(bi,null);
-				//screenHeight = (int)img.getHeight();
-				//screenWidth = (int)img.getWidth();
-				gc.drawImage(img, 80, 0);
-            	isInit = false;
-			} catch (IOException e) {
-				// TODO 自動生成された catch ブロック
-				e.printStackTrace();
-			}
-        }
     	if (isShowPreview) {
     		gc.drawImage(SwingFXUtils.toFXImage(image,null), 0, 0);
     	}
@@ -250,8 +240,7 @@ public class Camera extends Application{
 	    	// キャンバスに描写
     		if(resultX<50&&resultX!=0){
     			if(resultY<50){
-    				gc.clearRect(0, 0, screenWidth, screenHeight);
-    				isInit = true;
+    				  gc.clearRect(0, 0, 640, 480);
     			}else if(resultY<100){
     				lineColor = Color.BROWN;
     			}else if(resultY<150){
@@ -263,25 +252,13 @@ public class Camera extends Application{
     			}else if(resultY<250){
     				lineColor = Color.BLACK;
 
-    			}else if(resultY<300){
-    				if (mouceMode){
-    					mouceMode = false;
-    				}else {
-        				mouceMode = true;
-    				}
     			}
     		}
-    		if(!mouceMode){
-	    		if(wImage != null){
-	    		    gc.drawImage(wImage, 0, 0);
-	    		}
-	    		gc.setLineWidth(5);
-	    		gc.setStroke(lineColor);
-		        if(CHECK_WHITE){
-		        	gc.strokeLine( preX,preY,resultX ,resultY );
-		        }
-    		}
-    		
+    		gc.setLineWidth(5);
+    		gc.setStroke(lineColor);
+	        if(CHECK_WHITE){
+	        	gc.strokeLine( preX,preY,resultX ,resultY );
+	        }
 	        gc.setFill( Color.WHITE );
 	        gc.fillRect( 0 ,0  , 50 , 50 );
 	        gc.setFill( Color.BROWN );
@@ -292,10 +269,6 @@ public class Camera extends Application{
 	        gc.fillRect( 0 ,150  , 50 , 50 );
 	        gc.setFill( Color.BLACK);
 	        gc.fillRect( 0 ,200  , 50 , 50 );
-	        gc.setFill( Color.BLACK );
-	        gc.fillRect( 0 ,250  , 50 , 50 );
-	        gc.setFill( Color.WHITE );
-	        gc.fillRect( 2 ,252  , 46 , 46 );
     	}
 		gc.setLineWidth(1);
 //        gc.strokeText("clear", 20, 20);
@@ -331,6 +304,8 @@ public class Camera extends Application{
                              oldcnt = cnt;
                             }
                             BufferedImage buff;
+//                            if (true) {
+//                            getPerspective
                             if(setScreenSize>3){
                             	//変換元座標設定
                             	float srcPoint[] = new float[]{
@@ -341,41 +316,24 @@ public class Camera extends Application{
                             	Mat srcPointMat = new Mat(4,2,CvType.CV_32F);
                             	srcPointMat.put(0, 0,srcPoint );
                             	//変換先座標設定
-                            	float dstPoint[] = new float[]{0, 0, 0, 480, 640, 480, 640, 0 };
+                            	float dstPoint[] = new float[]{0, 0, 0, 640, 480, 640, 480, 0 };
                             	Mat dstPointMat = new Mat(4,2,CvType.CV_32F);
                             	dstPointMat.put(0, 0,dstPoint );
                             	//変換行列作成
                             	Mat r_mat = Imgproc.getPerspectiveTransform(srcPointMat, dstPointMat);
-                            	//図形変換処理//                            	Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
+                            	//図形変換処理
+//                            	Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
                             	Imgproc.warpPerspective(frame, frame, r_mat, frame.size(),Imgproc.INTER_LINEAR);
                             }
                             	buff = matToBufferedImage(frame);
-                    		indexCoordinate(buff);
+//                            } else {
+//                            	Imgcodecs.imencode(".bmp", frame, mem);
+//	                            Image im = ImageIO.read(new ByteArrayInputStream(mem.toArray()));
+//	                    		buff = (BufferedImage) im;
+//                            }
+                    		toGrayScale(buff);
                     		drawCanvas(buff, String.valueOf(fps));
-                    		if(wImage != null){
-                    		    canvas.snapshot(null, wImage);
-                    		}
                             cnt++;
-                            if(mouceMode){
-                                Robot robo = new Robot();
-                                PointerInfo pi = MouseInfo.getPointerInfo();
-                                Point mousePoint = pi.getLocation();
-								if(CHECK_WHITE){
-                                	robo.mouseMove(mousePoint.x+resultX-preX, mousePoint.y+resultY-preY);
-                                    if(clkTime<15&&isClick){
-                                    	robo.mousePress(InputEvent.BUTTON1_MASK);
-                                    	robo.mouseRelease(InputEvent.BUTTON1_MASK);
-                                    }
-                                    clkTime = 0;
-                                    isClick = false;
-                                    
-                                }else {
-                                    clkTime++;
-                                    isClick = true;
-                                }
-                                	
-                                
-                            }
 	                    } catch (Exception ex) {
 	                        System.out.printf("Error %s", ex.toString());
 	                    }
